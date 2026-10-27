@@ -6,6 +6,26 @@ import urllib.error
 
 import azure.functions as func
 
+from datetime import datetime, timezone
+from azure.data.tables import TableServiceClient
+from azure.identity import DefaultAzureCredential
+
+def get_stock_table():
+    account_name = os.getenv("STORAGE_ACCOUNT_NAME")
+
+    if not account_name:
+        raise ValueError("STORAGE_ACCOUNT_NAME is not configured")
+
+    endpoint = f"https://{account_name}.table.core.windows.net"
+
+    credential = DefaultAzureCredential()
+    service = TableServiceClient(
+        endpoint=endpoint,
+        credential=credential,
+    )
+
+    return service.get_table_client(table_name="StockQuotes")
+
 app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 
@@ -148,4 +168,194 @@ def mcp_get_stock_quote(context: str) -> str:
     except Exception:
         return json.dumps({
             "error": "Unable to retrieve the stock quote."
+        })
+
+
+# Properties for saving a stock quote.
+SAVE_QUOTE_PROPERTIES = json.dumps([
+    {
+        "propertyName": "symbol",
+        "propertyType": "string",
+        "description": "Stock ticker symbol, for example IBM.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "price",
+        "propertyType": "string",
+        "description": "Latest available stock price.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "open",
+        "propertyType": "string",
+        "description": "Opening price.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "high",
+        "propertyType": "string",
+        "description": "Daily high.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "low",
+        "propertyType": "string",
+        "description": "Daily low.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "volume",
+        "propertyType": "string",
+        "description": "Trading volume.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "trading_day",
+        "propertyType": "string",
+        "description": "Trading day in YYYY-MM-DD format.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "change",
+        "propertyType": "string",
+        "description": "Absolute price change.",
+        "isRequired": True
+    },
+    {
+        "propertyName": "change_percent",
+        "propertyType": "string",
+        "description": "Percentage price change.",
+        "isRequired": True
+    }
+])
+
+GET_HISTORY_PROPERTIES = json.dumps([
+    {
+        "propertyName": "symbol",
+        "propertyType": "string",
+        "description": "Stock ticker symbol, for example IBM.",
+        "isRequired": True
+    }
+])
+
+
+@app.mcp_tool_trigger(
+    arg_name="context",
+    tool_name="save_stock_quote",
+    description="Save a retrieved stock quote to Azure Table Storage.",
+    tool_properties=SAVE_QUOTE_PROPERTIES,
+)
+def save_stock_quote(context: str) -> str:
+    try:
+        invocation = json.loads(context)
+        args = invocation.get("arguments", {})
+
+        symbol = (args.get("symbol") or "").strip().upper()
+        trading_day = (args.get("trading_day") or "").strip()
+
+        if not symbol or not trading_day:
+            return json.dumps({
+                "success": False,
+                "error": "Symbol and trading_day are required."
+            })
+
+        # Validate date format before writing to storage.
+        datetime.strptime(trading_day, "%Y-%m-%d")
+
+        table = get_stock_table()
+
+        # Use a unique row key so multiple quotes for the same
+        # symbol and trading day can be stored.
+        entity = {
+            "PartitionKey": symbol,
+            "RowKey": datetime.now(timezone.utc).strftime(
+                "%Y%m%dT%H%M%S%fZ"
+            ),
+            "Symbol": symbol,
+            "Price": args["price"],
+            "Open": args["open"],
+            "High": args["high"],
+            "Low": args["low"],
+            "Volume": args["volume"],
+            "TradingDay": trading_day,
+            "Change": args["change"],
+            "ChangePercent": args["change_percent"],
+            "StoredAt": datetime.now(timezone.utc).isoformat()
+        }
+
+        table.create_entity(entity=entity)
+
+        return json.dumps({
+            "success": True,
+            "message": "Stock quote saved successfully.",
+            "symbol": symbol,
+            "trading_day": trading_day,
+            "price": args["price"]
+        })
+
+    except Exception:
+        return json.dumps({
+            "success": False,
+            "error": (
+                "Unable to save the stock quote. "
+                "Check the storage configuration and permissions."
+            )
+        })
+
+
+@app.mcp_tool_trigger(
+    arg_name="context",
+    tool_name="get_stock_history",
+    description="Retrieve previously saved stock quotes for a symbol.",
+    tool_properties=GET_HISTORY_PROPERTIES,
+)
+def get_stock_history(context: str) -> str:
+    try:
+        invocation = json.loads(context)
+        args = invocation.get("arguments", {})
+        symbol = (args.get("symbol") or "").strip().upper()
+
+        if not symbol:
+            return json.dumps({
+                "error": "Provide a stock symbol, such as IBM."
+            })
+
+        table = get_stock_table()
+
+        entities = table.query_entities(
+            query_filter=f"PartitionKey eq '{symbol}'"
+        )
+
+        records = []
+        for entity in entities:
+            records.append({
+                "symbol": entity.get("Symbol"),
+                "price": entity.get("Price"),
+                "open": entity.get("Open"),
+                "high": entity.get("High"),
+                "low": entity.get("Low"),
+                "volume": entity.get("Volume"),
+                "trading_day": entity.get("TradingDay"),
+                "change": entity.get("Change"),
+                "change_percent": entity.get("ChangePercent"),
+                "stored_at": entity.get("StoredAt")
+            })
+
+        records.sort(
+            key=lambda item: item.get("stored_at") or "",
+            reverse=True
+        )
+
+        return json.dumps({
+            "symbol": symbol,
+            "count": len(records),
+            "quotes": records
+        })
+
+    except Exception:
+        return json.dumps({
+            "error": (
+                "Unable to retrieve stock history. "
+                "Check the storage configuration and permissions."
+            )
         })
