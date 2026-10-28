@@ -4,6 +4,18 @@ An AI-powered stock market assistant built with **Azure AI Foundry, Azure Functi
 
 The agent retrieves stock quotes, saves them to cloud storage, and retrieves historical records through MCP tools. GitHub Actions automates deployment to Azure Functions.
 
+## Screenshots
+
+  1. Azure AI Foundry Agent
+     Shows the AI agent retrieving stock quotes and saving stock data.
+     screenshots/01-foundry-agent.png
+
+  3. Health Check API
+      Confirms that the Azure Functions application is running.
+
+  3. Stock Quote API
+      Example response from the stock quote endpoint.
+     
 ##  Features
 
 - **Live stock quote retrieval:** Fetch stock information using the Alpha Vantage API.
