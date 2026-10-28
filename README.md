@@ -8,13 +8,18 @@ The agent retrieves stock quotes, saves them to cloud storage, and retrieves his
 
   1. Azure AI Foundry Agent
      Shows the AI agent retrieving stock quotes and saving stock data.
-     screenshots/01-foundry-agent.png
+       <img width="1920" height="1080" alt="01-foundry-agent" src="https://github.com/user-attachments/assets/4923b92f-9013-4984-b179-3996812fe9d7" />
+
 
   3. Health Check API
       Confirms that the Azure Functions application is running.
+        <img width="953" height="515" alt="02-health-check png" src="https://github.com/user-attachments/assets/df6a2146-1124-4108-9c28-d2c947434074" />
+
 
   3. Stock Quote API
       Example response from the stock quote endpoint.
+        <img width="955" height="542" alt="03-stock-quote png" src="https://github.com/user-attachments/assets/c3d0e08b-f269-49b1-8c47-7ab915a7d3ab" />
+
      
 ##  Features
 
