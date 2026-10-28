@@ -228,7 +228,7 @@ Invoke-RestMethod "http://localhost:7071/api/stock?symbol=IBM"
 
 ##  Azure Deployment
 
-The project uses GitHub Actions to automate deployment to Azure Functions.
+In this project i useed GitHub Actions to automate deployment to Azure Functions.
 
 The workflow is located at:
 
