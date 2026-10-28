@@ -269,7 +269,7 @@ These tests confirm the main quote retrieval and history workflows. They do not 
 - Use Azure application settings or an appropriate secret store for sensitive configuration.
 - Use managed identity and least-privilege Azure RBAC permissions for storage access.
 - Restrict access to protected function endpoints and MCP tools as appropriate.
-- Avoid exposing function keys, connection strings, or other credentials in logs and screenshots.
+- Avoid exposing function keys, connection strings, or other credentials in logs.
 
 ##  Future Improvements
 
