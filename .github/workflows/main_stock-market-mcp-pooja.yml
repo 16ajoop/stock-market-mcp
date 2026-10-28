@@ -80,6 +80,6 @@ jobs:
         id: deploy-to-function
         with:
           app-name: 'stock-market-mcp-pooja'
-          slot-name: 'Production'
           package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          remote-build: true
           
